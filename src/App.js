@@ -46,7 +46,7 @@ const db = getFirestore(app);
 
 const SHOP_INFO = {
   name: "Together Point St. Veit",
-  logoUrl: "https://i.postimg.cc/j2kRC2nY/sdfsdfasdfsadfadsfads.png", 
+  logoUrl: "https://i.postimg.cc/qqr1nxns/Logo-Togeter-Point.jpg", 
   address: "Platz am Graben 2, 9300 St. Veit an der Glan",
   pickupTimes: ["Mittwoch: 20:30 – 21:00 Uhr", "Donnerstag: 11:00 – 12:00 Uhr", "Samstag: 20:00 – 20:30 Uhr"],
   defaultProducts: [
