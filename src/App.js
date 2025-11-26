@@ -59,8 +59,6 @@ const SHOP_INFO = {
       // HIER DEN ECHTEN BILD-LINK EINFÜGEN!
       imageUrl: "https://i.postimg.cc/W3xhf5St/Retterkiste.jpg", // <-- HIER ERSETZEN
     },
-    { 
-// ... Restliche Produkte folgen
     { name: "Retterkiste vegetarisch", price: 20.00, description: "Ohne Fleischprodukte. Wertschätzung ca. 20€", stock: "10" },
     { name: "Retterkiste vegan", price: 20.00, description: "Rein pflanzlich. Wertschätzung ca. 20€", stock: "5" },
     { name: "Partykiste", price: 25.00, description: "Ideal für Feiern und Gruppen.", stock: "5" },
