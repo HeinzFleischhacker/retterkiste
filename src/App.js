@@ -50,7 +50,11 @@ const SHOP_INFO = {
   address: "Platz am Graben 2, 9300 St. Veit an der Glan",
   pickupTimes: ["Mittwoch: 20:30 – 21:00 Uhr", "Donnerstag: 11:00 – 12:00 Uhr", "Samstag: 20:00 – 20:30 Uhr"],
   defaultProducts: [
-    { name: "Retterkiste gemischt", price: 20.00, description: "Bunte Mischung aus Obst & Gemüse. Wertschätzung ca. 20€", stock: "20" }, ImageUrl: "https://i.postimg.cc/W3xhf5St/Retterkiste.jpg"
+    { name: "Retterkiste gemischt", price: 20.00, description: "Bunte Mischung aus Obst & Gemüse. Wertschätzung ca. 20€", stock: "20" }, 
+  // HIER DEN LINK EINFÜGEN:
+      imageUrl: "https://i.postimg.cc/W3xhf5St/Retterkiste.jpg", 
+    },
+    {
     { name: "Retterkiste vegetarisch", price: 20.00, description: "Ohne Fleischprodukte. Wertschätzung ca. 20€", stock: "10" },
     { name: "Retterkiste vegan", price: 20.00, description: "Rein pflanzlich. Wertschätzung ca. 20€", stock: "5" },
     { name: "Partykiste", price: 25.00, description: "Ideal für Feiern und Gruppen.", stock: "5" },
