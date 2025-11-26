@@ -3,6 +3,7 @@ import { ShoppingBag, Plus, Minus, Trash2, User, Home, X, Check, Copy, AlertCirc
 import { initializeApp } from "firebase/app";
 import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "firebase/auth";
 import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, serverTimestamp, writeBatch } from "firebase/firestore";
+import ReactDOM from 'react-dom/client'; // Import für Fehlerbehebung
 
 // --- DEINE EIGENE DATENBANK KONFIGURATION ---
 const firebaseConfig = {
@@ -27,7 +28,7 @@ class ErrorBoundary extends React.Component {
       return (
         <div className="p-8 bg-red-50 text-red-800 border border-red-200 rounded m-4 text-center">
           <h2 className="text-xl font-bold mb-2">Hoppla!</h2>
-          <p className="mb-4">Da ist etwas schiefgelaufen. Bitte lade die Seite neu.</p>
+          <p className="mb-4">Da ist etwas schiefgelaufen.</p>
           <p className="text-xs text-red-400 mb-4">{this.state.error?.toString()}</p>
           <button onClick={() => window.location.reload()} className="bg-red-600 text-white px-6 py-3 rounded-full font-bold shadow-lg">Neu laden</button>
         </div>
@@ -44,7 +45,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 const SHOP_INFO = {
-  name: "Together Point St. Veit an der Glan",
+  name: "Together Point St. Veit",
   logoUrl: "https://via.placeholder.com/150x150/10b981/ffffff?text=Together", 
   address: "Platz am Graben 2, 9300 St. Veit an der Glan",
   pickupTimes: ["Mittwoch: 20:30 – 21:00 Uhr", "Donnerstag: 11:00 – 12:00 Uhr", "Samstag: 20:00 – 20:30 Uhr"],
@@ -60,6 +61,68 @@ const SHOP_INFO = {
     { name: "Gebäckkiste (Mittel)", price: 10.00, description: "Große Auswahl an Backwaren.", stock: "10" },
     { name: "Gebäckkiste (Groß)", price: 20.00, description: "XXL Auswahl für Familien oder WG.", stock: "5" },
   ]
+};
+
+// --- HILFSFUNKTION FÜR BESTELLFRISTEN ---
+const getOrderingStatus = (pickupTimes) => {
+  const now = new Date();
+  const day = now.getDay(); // 0=So, 1=Mo, 2=Di, 3=Mi, 4=Do, 5=Fr, 6=Sa
+  const hour = now.getHours();
+
+  // Definiere die Fristen (Start/Ende Tag und Stunde)
+  const rules = {
+    'Mittwoch & Donnerstag': {
+      startDay: 6, // Samstag
+      startTime: 21, // 21:00 Uhr
+      endDay: 3, // Mittwoch
+      endTime: 12, // 12:00 Uhr
+    },
+    'Samstag': {
+      startDay: 3, // Mittwoch
+      startTime: 19, // 19:00 Uhr
+      endDay: 5, // Freitag
+      endTime: 12, // 12:00 Uhr
+    }
+  };
+
+  const availableTimes = pickupTimes.filter(time => {
+    let ruleKey = '';
+    if (time.includes('Mittwoch') || time.includes('Donnerstag')) ruleKey = 'Mittwoch & Donnerstag';
+    if (time.includes('Samstag')) ruleKey = 'Samstag';
+    
+    if (!ruleKey) return false;
+
+    const rule = rules[ruleKey];
+    
+    const isToday = day === rule.startDay || day === rule.endDay;
+    let is_open = false;
+
+    // Logik für Fristen über den Wochenwechsel (Sa -> Mi) oder regulär (Mi -> Fr)
+    const isBeforeEnd = day <= rule.endDay && (day < rule.endDay || hour < rule.endTime);
+    const isAfterStart = day >= rule.startDay && (day > rule.startDay || hour >= rule.startTime);
+    
+    // Frist, die über den Wochenwechsel geht (Sa -> Mi)
+    if (rule.startDay > rule.endDay) {
+        if (isAfterStart || isBeforeEnd) {
+             is_open = true;
+        }
+    } 
+    // Frist innerhalb der Woche (Mi -> Fr)
+    else {
+        if (day >= rule.startDay && day <= rule.endDay) {
+             if (day === rule.startDay && hour >= rule.startTime) is_open = true;
+             if (day > rule.startDay && day < rule.endDay) is_open = true;
+             if (day === rule.endDay && hour < rule.endTime) is_open = true;
+        }
+    }
+    
+    return is_open;
+  });
+
+  return { 
+    availableTimes, 
+    allClosed: availableTimes.length === 0 
+  };
 };
 
 const Navigation = ({ view, setView, cartCount }) => (
@@ -176,14 +239,22 @@ const CartView = ({ cart, updateQuantity, removeFromCart, setView, total }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [user, setUser] = useState(null);
+  const { availableTimes, allClosed } = getOrderingStatus(SHOP_INFO.pickupTimes); // <-- NEU: Rufe Status ab
 
   useEffect(() => { return onAuthStateChanged(auth, setUser); }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user) return alert("Nicht verbunden. Bitte Seite neu laden.");
+    if (allClosed) return alert("Bestellungen sind momentan geschlossen."); // NEU: Schließe ab, falls alle zu sind
     if (!formData.isMember) return alert("Bitte gib an, ob du Vereinsmitglied bist.");
     if (!formData.pickupTime) return alert("Bitte wähle eine Abholzeit.");
+    
+    // NEU: Zusätzlicher Check, falls die gewählte Zeit gerade geschlossen wurde
+    if (!availableTimes.includes(formData.pickupTime)) {
+        return alert("Die gewählte Abholzeit ist momentan geschlossen. Bitte wähle eine andere Zeit.");
+    }
+    
     setIsSubmitting(true);
     try {
       await addDoc(collection(db, 'orders'), { customer: formData, items: cart, total, status: 'neu', createdAt: serverTimestamp(), userId: user.uid });
@@ -232,6 +303,11 @@ const CartView = ({ cart, updateQuantity, removeFromCart, setView, total }) => {
       </div>
       <div className="lg:col-span-7 bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
         <h2 className="font-bold text-lg mb-6 flex items-center gap-2"><User size={20}/> Abholung</h2>
+        {allClosed && (
+            <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+                <span className="font-bold">Bestellungen geschlossen:</span> Momentan ist unser Bestellfenster nicht aktiv.
+            </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-xs font-bold uppercase mb-2 text-gray-500">Bist du Mitglied im Verein? *</label>
@@ -248,19 +324,28 @@ const CartView = ({ cart, updateQuantity, removeFromCart, setView, total }) => {
           <div>
             <label className="block text-xs font-bold uppercase mb-2 text-gray-500">Abholzeit wählen *</label>
             <div className="space-y-2">
-              {SHOP_INFO.pickupTimes.map(t => (
-                <label key={t} className={`block border p-3 rounded-lg cursor-pointer transition-all flex items-center gap-3 ${formData.pickupTime === t ? 'bg-emerald-50 border-emerald-500 ring-1 ring-emerald-500' : 'hover:bg-gray-50 border-gray-200'}`}>
-                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${formData.pickupTime === t ? 'border-emerald-600' : 'border-gray-300'}`}>{formData.pickupTime === t && <div className="w-2 h-2 rounded-full bg-emerald-600"/>}</div>
-                  <div className="flex items-center gap-2">
-                    <Calendar size={16} className="text-gray-400"/>
-                    <input type="radio" name="time" className="hidden" onChange={() => setFormData({...formData, pickupTime: t})} /> <span className="text-sm text-gray-700">{t}</span>
-                  </div>
-                </label>
-              ))}
+              {SHOP_INFO.pickupTimes.map(t => {
+                const isTimeAvailable = availableTimes.includes(t); // NEU: Check, ob die Zeit buchbar ist
+                
+                return (
+                  <label key={t} className={`block border p-3 rounded-lg cursor-pointer transition-all flex items-center gap-3 ${formData.pickupTime === t ? 'bg-emerald-50 border-emerald-500 ring-1 ring-emerald-500' : 'hover:bg-gray-50 border-gray-200'} ${!isTimeAvailable && 'opacity-50 cursor-not-allowed bg-gray-100'}`} disabled={!isTimeAvailable}>
+                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${formData.pickupTime === t && isTimeAvailable ? 'border-emerald-600' : 'border-gray-300'}`}>
+                      {formData.pickupTime === t && isTimeAvailable && <div className="w-2 h-2 rounded-full bg-emerald-600"/>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar size={16} className="text-gray-400"/>
+                      <input type="radio" name="time" className="hidden" 
+                             onChange={() => isTimeAvailable && setFormData({...formData, pickupTime: t})} 
+                             disabled={!isTimeAvailable} /> 
+                      <span className="text-sm text-gray-700">{t} {!isTimeAvailable && ' (Geschlossen)'}</span>
+                    </div>
+                  </label>
+                );
+              })}
             </div>
           </div>
           <textarea className="w-full border border-gray-200 p-3 rounded-lg h-24 focus:ring-2 focus:ring-emerald-500 outline-none resize-none" placeholder="Anmerkung (Allergien, Wünsche)..." value={formData.note} onChange={e => setFormData({...formData, note: e.target.value})} />
-          <button type="submit" disabled={isSubmitting} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl transition-transform active:scale-95 shadow-lg shadow-emerald-200 flex justify-center items-center gap-2">
+          <button type="submit" disabled={isSubmitting || allClosed} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl transition-transform active:scale-95 shadow-lg shadow-emerald-200 flex justify-center items-center gap-2 disabled:bg-gray-400">
             {isSubmitting ? <><Spinner/> Sende...</> : 'Verbindlich Reservieren'}
           </button>
         </form>
