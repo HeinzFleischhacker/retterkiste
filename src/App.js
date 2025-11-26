@@ -72,14 +72,14 @@ const getOrderingStatus = (pickupTimes) => {
   // Definiere die Fristen (Start/Ende Tag und Stunde)
   const rules = {
     'Mittwoch & Donnerstag': {
-      startDay: 6, // Samstag
-      startTime: 21, // 21:00 Uhr
+      startDay: 6, // Donnerstag
+      startTime: 21, // 12:00 Uhr
       endDay: 3, // Mittwoch
       endTime: 12, // 12:00 Uhr
     },
     'Samstag': {
-      startDay: 3, // Mittwoch
-      startTime: 19, // 19:00 Uhr
+      startDay: 3, // Samstag
+      startTime: 19, // 21:00 Uhr
       endDay: 5, // Freitag
       endTime: 12, // 12:00 Uhr
     }
