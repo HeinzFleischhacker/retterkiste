@@ -44,7 +44,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 const SHOP_INFO = {
-  name: "Together Point St. Veit an der Glan",
+  name: "Together Point St. Veit an der Glan lalala",
   logoUrl: "https://via.placeholder.com/150x150/10b981/ffffff?text=Together", 
   address: "Platz am Graben 2, 9300 St. Veit an der Glan",
   pickupTimes: ["Mittwoch: 20:30 – 21:00 Uhr", "Donnerstag: 11:00 – 12:00 Uhr", "Samstag: 20:00 – 20:30 Uhr"],
